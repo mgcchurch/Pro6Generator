@@ -16,17 +16,27 @@ keywords = '1234567890'
 new_text = 'lyrics sample'
 for NSString in root.iter('NSString'):
     if NSString.attrib["rvXMLIvarName"] == "PlainText": # find the section of plain text
-        text_decode = b64decode(NSString.text)
         # write the lyric of the slide in b64 format
-        text_decode.replace(keywords, new_text)
-        NSString.text = b64encode(text_decode)
+        text_decode = str(b64decode(NSString.text), encoding = "utf-8")
+        text_decode = text_decode.replace(keywords, new_text)
+        text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
+        NSString.text = str(text_bytes, encoding="utf-8")
+
     elif NSString.attrib["rvXMLIvarName"] == "RTFData":
-        pass
+        # write the lyric of the slide in b64 format
+        text_decode = str(b64decode(NSString.text), encoding = "utf-8")
+        text_decode = text_decode.replace(keywords, new_text)
+        text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
+        NSString.text = str(text_bytes, encoding="utf-8")
+
     elif NSString.attrib["rvXMLIvarName"] == "WinFlowData":
-        WinFlowData = NSString.text
+        # write the lyric of the slide in b64 format
+        text_decode = str(b64decode(NSString.text), encoding = "utf-8")
+        text_decode = text_decode.replace(keywords, new_text)
+        text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
+        NSString.text = str(text_bytes, encoding="utf-8")
+
     elif NSString.attrib["rvXMLIvarName"] == "WinFontData":
         WinFontData = NSString.text
-
-    # NSString.text = ""
 
 tree.write("output.pro6")
