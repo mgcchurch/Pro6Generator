@@ -7,6 +7,10 @@ from lyricsmaster import LyricWiki, TorController
 import re
 from pypinyin import pinyin
 import zhconv
+import hashlib
+import random
+import requests
+import time
 
 
 class Lyric:
@@ -33,6 +37,44 @@ class Lyric:
         f.close()
 
 
+def translate(chinese_text):
+    """
+    translate Chinese into English using Baidu Translate
+    :param chinese_text:
+    :return:
+    """
+    appid = 'xxxx'        # 填写你的appid
+    secretKey = 'xxxx'    # 填写你的密钥
+
+    apiURL = 'http://api.fanyi.baidu.com/api/trans/vip/translate'  # 通用翻译API HTTP地址
+    salt = str(random.randint(32768, 65536))
+    # 准备计算 sign 值需要的字符串
+    pre_sign = appid + chinese_text + salt + secretKey
+    # 计算 md5 生成 sign
+    sign = hashlib.md5(pre_sign.encode()).hexdigest()
+    # 请求 apiURL 所有需要的参数
+    params = {
+        'q': chinese_text,
+        'from': 'cht',
+        'to': 'en',
+        'appid': appid,
+        'salt': salt,
+        'sign': sign
+    }
+    try:
+        # 直接将 params 和 apiURL 一起传入 requests.get() 函数
+        response = requests.get(apiURL, params=params)
+        # 获取返回的 json 数据
+        result_dict = response.json()
+        # 得到的结果正常则 return
+        if 'trans_result' in result_dict:
+            return result_dict
+        else:
+            print('Some errors occured:\n', result_dict)
+    except Exception as e:
+        print('Some errors occured: ', e)
+
+
 class Pro6Generator:
     def __init__(self):
         self.tree = None
@@ -46,29 +88,9 @@ class Pro6Generator:
                                  "Bridge 1": "1 1 1 1", "Bridge 2": "0.6 0.4 0.2 1", "Bridge 3": "1 0.5 0 1",
                                  "Ending": "0 1 1 1"}
 
-# first_slide = True
-# for array in root.iter('array'):
-#     for RVDisplaySlide in array.findall('RVDisplaySlide'):
-#         if first_slide:
-#             first_slide = False
-#         else:
-#             array.remove(RVDisplaySlide)
-
     def import_template(self, template):
         self.tree = ET.parse(template)
         self.root = self.tree.getroot()
-
-        # for member1 in self.tree.findall("./array/RVSlideGrouping/array/RVDisplaySlide"):
-        #     member2 = copy.deepcopy(member1)
-        #
-        #     for array in self.tree.findall("./array/RVSlideGrouping/array"):
-        #         array.append(member2)
-        #
-        #     self.tree.write("output.pro6")
-        # pass
-
-    # def import_lyrics(self, lyrics_file):
-
 
     def search_lyrics(self, song_name):
         pass
@@ -150,6 +172,8 @@ class Pro6Generator:
             else:
                 group = self.create_group(group_array, label)
                 for text in section:
+                    # lower the request frequency of Baidu Translate
+                    time.sleep(0.5)
                     self.create_slide(group, text)
 
         self.tree.write("output.pro6", encoding="utf-8", xml_declaration=True)
@@ -190,10 +214,15 @@ class Pro6Generator:
             "pinyin": 'Pinyin'
         }
 
+        text_english = ""
+        translate_result = translate(text)
+        if translate_result is not None:
+            text_english = translate_result['trans_result'][0]['dst']
+
         content = {
             "traditional": text,
             "simple": zhconv.convert(text, 'zh-cn'),
-            "english": 'English',
+            "english": text_english,
             "pinyin": ' '.join([''.join(s) for s in pinyin(text)])
         }
         # update UUID in RVDisplaySlide
@@ -239,6 +268,4 @@ if __name__ == "__main__":
     pro6_generator = Pro6Generator()
     pro6_generator.import_template('template.pro6')
     pro6_generator.generate_pro6()
-
-
 
