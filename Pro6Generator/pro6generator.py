@@ -5,6 +5,7 @@ import copy
 import uuid
 from lyricsmaster import LyricWiki, TorController
 import re
+from pypinyin import pinyin
 
 
 class Lyric:
@@ -155,8 +156,9 @@ class Pro6Generator:
     def create_group(self, parent, label):
         """
         create group element under parent
-        :param parent:
-        :return:
+        :param label: the label of the new group
+        :param parent: create group under parent
+        :return: new group
         """
         new_group = copy.deepcopy(self.group_copy)
         new_group.attrib["name"] = label
@@ -168,9 +170,10 @@ class Pro6Generator:
 
     def create_slide(self, group, text):
         """
-        create group element under parent
-        :param parent:
-        :return:
+        create slide element under the group
+        :param group: group name in which you want to create slide
+        :param text: text in the slide
+        :return: none
         """
         parent = None
         for slide_parent in group.findall(".array[@rvXMLIvarName='slides']"):
@@ -179,35 +182,49 @@ class Pro6Generator:
         new_slide = copy.deepcopy(self.slide_copy)
         new_slide.attrib["UUID"] = str(uuid.uuid4())
 
-        keywords = '1234567890'
+        keywords = {
+            "traditional": '繁體中文',
+            "simple": '简体中文',
+            "english": 'English',
+            "pinyin": 'Pinyin'
+        }
 
+        content = {
+            "traditional": text,
+            "simple": '简体中文',
+            "english": 'English',
+            "pinyin": ' '.join([''.join(s) for s in pinyin(text)])
+        }
         # update UUID in RVDisplaySlide
         new_slide.attrib["UUID"] = str(uuid.uuid4()).upper()
         # update UUID in RVTextElement
         for RVTextElement in new_slide.findall("./array/RVTextElement"):
             RVTextElement.attrib["UUID"] = str(uuid.uuid4())
 
-        for NSString in new_slide.iter('NSString'):
-            if NSString.attrib["rvXMLIvarName"] == "PlainText":  # find the section of plain text
-                # write the lyric of the slide in b64 format
-                text_decode = str(b64decode(NSString.text), encoding="utf-8")
-                text_decode = text_decode.replace(keywords, text)
-                text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
-                NSString.text = str(text_bytes, encoding="utf-8")
+            for NSString_PlainText in RVTextElement.findall("./NSString[@rvXMLIvarName='PlainText']"):
+                for key in keywords:
+                    if NSString_PlainText.text == str(b64encode(bytes(keywords[key], encoding="utf8")), encoding="utf-8"):   # find the element of '繁體中文'
+                        for NSString in RVTextElement.iter('NSString'):
+                            if NSString.attrib["rvXMLIvarName"] == "PlainText":
+                                # Replace the '繁體中文' with new text
+                                text_decode = str(b64decode(NSString.text), encoding="utf-8")
+                                text_decode = text_decode.replace(keywords[key], content[key])
+                                text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
+                                NSString.text = str(text_bytes, encoding="utf-8")
 
-            elif NSString.attrib["rvXMLIvarName"] == "RTFData":
-                # write the lyric of the slide in b64 format
-                text_decode = str(b64decode(NSString.text), encoding="utf-8")
-                text_decode = text_decode.replace(keywords, text)
-                text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
-                NSString.text = str(text_bytes, encoding="utf-8")
+                            elif NSString.attrib["rvXMLIvarName"] == "RTFData":
+                                # write the lyric of the slide in b64 format
+                                text_decode = str(b64decode(NSString.text), encoding="utf-8")
+                                text_decode = text_decode.replace(keywords[key], content[key])
+                                text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
+                                NSString.text = str(text_bytes, encoding="utf-8")
 
-            elif NSString.attrib["rvXMLIvarName"] == "WinFlowData":
-                # write the lyric of the slide in b64 format
-                text_decode = str(b64decode(NSString.text), encoding="utf-8")
-                text_decode = text_decode.replace(keywords, text)
-                text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
-                NSString.text = str(text_bytes, encoding="utf-8")
+                            elif NSString.attrib["rvXMLIvarName"] == "WinFlowData":
+                                # write the lyric of the slide in b64 format
+                                text_decode = str(b64decode(NSString.text), encoding="utf-8")
+                                text_decode = text_decode.replace(keywords[key], content[key])
+                                text_bytes = b64encode(bytes(text_decode, encoding="utf8"))
+                                NSString.text = str(text_bytes, encoding="utf-8")
 
         parent.append(new_slide)
 
@@ -222,7 +239,5 @@ if __name__ == "__main__":
     pro6_generator.import_template('template.pro6')
     pro6_generator.generate_pro6()
 
-    # for text in lyric_instance.verse1:
-    #     print(text)
 
 
