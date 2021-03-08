@@ -6,6 +6,7 @@ import uuid
 from lyricsmaster import LyricWiki, TorController
 import re
 from pypinyin import pinyin
+import zhconv
 
 
 class Lyric:
@@ -191,7 +192,7 @@ class Pro6Generator:
 
         content = {
             "traditional": text,
-            "simple": '简体中文',
+            "simple": zhconv.convert(text, 'zh-cn'),
             "english": 'English',
             "pinyin": ' '.join([''.join(s) for s in pinyin(text)])
         }
