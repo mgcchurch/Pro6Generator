@@ -1,10 +1,10 @@
 # Pro6Generator
 A tool to create Pro6 file from text file
 
-# How does Pro6Generator work?
+### How does Pro6Generator work?
 Before using the tool, you need to prepare your lyrics file and a template file of the ProPresenter6, and the template file should just contain one slide in which 4 different text boxes are added and type the words "English" "简体中文" "繁體中文" and "Pinyin" in those text boxes. In the repository, there is a sample file "template.pro6". The lyrics file should follow the format like the lyrics.txt file
 
-# Who uses Pro6Generator?
+### Who uses Pro6Generator?
 Anyone who hope to convert the text lyrics to pro6 files 
 
 ### Getting started
