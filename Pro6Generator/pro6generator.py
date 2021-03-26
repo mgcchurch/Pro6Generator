@@ -3,7 +3,6 @@ from base64 import b64encode
 from base64 import b64decode
 import copy
 import uuid
-from lyricsmaster import LyricWiki, TorController
 import re
 from pypinyin import pinyin
 import zhconv
@@ -11,16 +10,21 @@ import hashlib
 import random
 import requests
 import time
+from pathlib import Path
 
 
 class Lyric:
     def __init__(self, lyrics_file):
-        self.lyric = {"Intro": [], "Verse 1": [], "Verse 2": [], "Verse 3": [], "PreChorus": [],
-                      "Chorus 1": [], "Chorus 2": [], "Chorus 3": [],
-                      "Bridge 1": [], "Bridge 2": [], "Bridge 3": [],
-                      "Ending": []}
+        self.lyric = {"Title": [], "Intro": [],
+                      "Verse 1": [], "Verse 2": [], "Verse 3": [], "Verse 4": [], "Verse 5": [], "Verse 6": [],
+                      "Verse 7": [], "Verse 8": [], "Verse 9": [], "PreChorus": [],
+                      "Chorus 1": [], "Chorus 2": [], "Chorus 3": [], "Chorus 4": [], "Chorus 5": [], "Chorus 6": [],
+                      "Bridge 1": [], "Bridge 2": [], "Bridge 3": [], "Ending": []
+                      }
         current_section = ""
         f = open(lyrics_file, "r", encoding='utf-8')
+        title = f.readline()
+        self.lyric["Title"].append(title.replace("\n", ""))
         for line in f:
             section = re.search(r"\[([\w\s]+)\]", line)
 
@@ -43,8 +47,8 @@ def translate(chinese_text):
     :param chinese_text:
     :return:
     """
-    appid = 'xxxx'        # 填写你的appid
-    secretKey = 'xxxx'    # 填写你的密钥
+    appid = 'xxx'  # 填写你的appid
+    secretKey = 'xxx'  # 填写你的密钥
 
     apiURL = 'http://api.fanyi.baidu.com/api/trans/vip/translate'  # 通用翻译API HTTP地址
     salt = str(random.randint(32768, 65536))
@@ -79,11 +83,13 @@ class Pro6Generator:
     def __init__(self):
         self.tree = None
         self.root = None
-        self.lyric_instance = Lyric('lyrics.txt')
+        self.lyric_instance = None
         self.group_copy = None
         self.slide_copy = None
-        self.group_color_dict = {"Intro": "1 1 0 1", "Verse 1": "0 0 1 1", "Verse 2": "0 1 0.5 1",
-                                 "Verse 3": "1 0.65 0 1", "PreChorus": "1 0.5 0 1",
+        self.group_color_dict = {"Title": "1 1 0 1", "Intro": "1 1 0 1", "Verse 1": "0 0 1 1", "Verse 2": "0 1 0.5 1",
+                                 "Verse 3": "1 0.65 0 1", "Verse 4": "0 0 1 1", "Verse 5": "0 1 0.5 1",
+                                 "Verse 6": "1 0.65 0 1", "Verse 7": "0 0 1 1", "Verse 8": "0 1 0.5 1",
+                                 "Verse 9": "1 0.65 0 1", "PreChorus": "1 0.5 0 1",
                                  "Chorus 1": "1 0 0 1", "Chorus 2": "0.93 0.5 0.93 1", "Chorus 3": "0.67 0.67 0.67 1",
                                  "Bridge 1": "1 1 1 1", "Bridge 2": "0.6 0.4 0.2 1", "Bridge 3": "1 0.5 0 1",
                                  "Ending": "0 1 1 1"}
@@ -92,91 +98,50 @@ class Pro6Generator:
         self.tree = ET.parse(template)
         self.root = self.tree.getroot()
 
-    def search_lyrics(self, song_name):
-        pass
-        # # Select a provider from the supported Lyrics Providers (LyricWiki, AzLyrics, Genius etc..)
-        # # The default Provider is LyricWiki
-        # provider = LyricWiki()
-        #
-        # # Fetch all lyrics from 2Pac
-        # discography = provider.get_lyrics('2Pac')
-        #
-        # # Discography Objects and Album Objects can be iterated over.
-        # for album in discography:  # album is an Album Object.
-        #     print('Album: ', album.title)
-        #     for song in album:  # song is a Song Object.
-        #         print('Song: ', song.title)
-        #         print('Lyrics: ', song.lyrics)
-        #
-        # # New indexing and slicing support of Discography and Album Objects
-        # first_song_of_first_album = discography.albums[0].songs[0]
-        # lat_two_songs_of_first_album = discography.albums[0].songs[-2:]
-        #
-        # # Fetch all lyrics from 2pac's album 'All eyez on me'.
-        # album = provider.get_lyrics('2Pac', album='All eyes on me')
-        #
-        # # Fetch the lyrics from the song 'California Love' in 2pac's album 'All eyez on me'.
-        # song = provider.get_lyrics('2Pac', album='All eyez on me', song='California Love)
-        #
-        # # Once the lyrics are fetched, you can save them on disk.
-        # # The 'save()' method is implemented for Discography, Album and Song objects.
-        # # By default, the lyrics are saved in {user}/Documents/lyricsmaster/
-        # discography.save()
-        #
-        # # You can also supply a folder to save the lyrics in.
-        # folder = 'c:\MyFolder'
-        # discography.save(folder)
-        #
-        # # For anonymity, you can use a Tor Proxy to make requests.
-        # # The TorController class has the same defaults as a default Tor Install.
-        # provider = LyricWiki(TorController())
-        # discography = provider.get_lyrics('2Pac')
-        #
-        # # For enhanced anonymity, the TorController can renew the the Tor ciruit for each album dowloaded.
-        # # For this functionnality to work, the Tor ControlPort option must be enabled in your torrc config file.
-        # # See https://www.torproject.org/docs/tor-manual.html.en for more information.
-        # provider = LyricWiki(TorController(control_port=9051, password='password))
-        # discography = provider.get_lyrics('2Pac')
-
     def generate_pro6(self):
         slide_array = None
         group_array = None
 
-        for slide in self.tree.findall("./array/RVSlideGrouping/array[@rvXMLIvarName='slides']"):
-            slide_array = slide
-        if slide_array is None:
-            print("Pro6 template is incorrect!")
-            return
+        for path in Path("Lyrics_text/").iterdir():
+            pro6_generator.import_template('template.pro6')
+            if path.is_file():
+                self.lyric_instance = Lyric(path)
 
-        for RVDisplaySlide in self.tree.findall("./array/RVSlideGrouping/array/RVDisplaySlide"):
-            self.slide_copy = copy.deepcopy(RVDisplaySlide)
-            slide_array.remove(RVDisplaySlide)
+                for slide in self.tree.findall("./array/RVSlideGrouping/array[@rvXMLIvarName='slides']"):
+                    slide_array = slide
+                if slide_array is None:
+                    print("Pro6 template is incorrect!")
+                    return
 
-        for array in self.tree.findall("./array[@rvXMLIvarName='groups']"):
-            group_array = array
-        if group_array is None:
-            print("Pro6 template is incorrect!")
-            return
+                for RVDisplaySlide in self.tree.findall("./array/RVSlideGrouping/array/RVDisplaySlide"):
+                    self.slide_copy = copy.deepcopy(RVDisplaySlide)
+                    slide_array.remove(RVDisplaySlide)
 
-        # find the target element RVDisplaySlide
-        for RVSlideGrouping in self.tree.findall("./array/RVSlideGrouping"):
-            self.group_copy = copy.deepcopy(RVSlideGrouping)
-            group_array.remove(RVSlideGrouping)
+                for array in self.tree.findall("./array[@rvXMLIvarName='groups']"):
+                    group_array = array
+                if group_array is None:
+                    print("Pro6 template is incorrect!")
+                    return
 
-        # group = self.create_group(group_array, "Verse 1")
-        # self.create_slide(group, "test")
+                # find the target element RVDisplaySlide
+                for RVSlideGrouping in self.tree.findall("./array/RVSlideGrouping"):
+                    self.group_copy = copy.deepcopy(RVSlideGrouping)
+                    group_array.remove(RVSlideGrouping)
 
-        for label, section in self.lyric_instance.lyric.items():
-            if not section:
-                continue
-            else:
-                group = self.create_group(group_array, label)
-                for text in section:
-                    # lower the request frequency of Baidu Translate
-                    time.sleep(0.5)
-                    self.create_slide(group, text)
+                # group = self.create_group(group_array, "Verse 1")
+                # self.create_slide(group, "test")
 
-        self.tree.write("output.pro6", encoding="utf-8", xml_declaration=True)
+                for label, section in self.lyric_instance.lyric.items():
+                    if not section:
+                        continue
+                    else:
+                        group = self.create_group(group_array, label)
+                        for text in section:
+                            # lower the request frequency of Baidu Translate
+                            time.sleep(0.5)
+                            self.create_slide(group, text)
+
+                self.tree.write('Lyrics_Pro6/' + path.stem + '.pro6', encoding="utf-8", xml_declaration=True)
 
     def create_group(self, parent, label):
         """
@@ -233,7 +198,8 @@ class Pro6Generator:
 
             for NSString_PlainText in RVTextElement.findall("./NSString[@rvXMLIvarName='PlainText']"):
                 for key in keywords:
-                    if NSString_PlainText.text == str(b64encode(bytes(keywords[key], encoding="utf8")), encoding="utf-8"):   # find the element of '繁體中文'
+                    if NSString_PlainText.text == str(b64encode(bytes(keywords[key], encoding="utf8")),
+                                                      encoding="utf-8"):  # find the element of '繁體中文'
                         for NSString in RVTextElement.iter('NSString'):
                             if NSString.attrib["rvXMLIvarName"] == "PlainText":
                                 # Replace the '繁體中文' with new text
@@ -260,12 +226,11 @@ class Pro6Generator:
 
         return
 
+
 if __name__ == "__main__":
     """
     command 1: sbms_maintenance program program_zip_file
     command 2: sbms_maintenance upgrade upgrade_zip_file
     """
     pro6_generator = Pro6Generator()
-    pro6_generator.import_template('template.pro6')
     pro6_generator.generate_pro6()
-

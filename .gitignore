@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/Pro6Generator/Lyrics_text/
+/Pro6Generator/Lyrics_Pro6/
