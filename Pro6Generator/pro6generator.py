@@ -11,6 +11,7 @@ import random
 import requests
 import time
 from pathlib import Path
+import argparse
 
 
 class Lyric:
@@ -47,8 +48,8 @@ def translate(chinese_text):
     :param chinese_text:
     :return:
     """
-    appid = 'xxx'  # 填写你的appid
-    secretKey = 'xxx'  # 填写你的密钥
+    appid = '20210308000719567'  # 填写你的appid
+    secretKey = 'bf2mZcXEqokrmbXdYfbz'  # 填写你的密钥
 
     apiURL = 'http://api.fanyi.baidu.com/api/trans/vip/translate'  # 通用翻译API HTTP地址
     salt = str(random.randint(32768, 65536))
@@ -81,6 +82,25 @@ def translate(chinese_text):
 
 class Pro6Generator:
     def __init__(self):
+        self.init = False
+        parser = argparse.ArgumentParser(description='Pro6 Generator')
+        parser.add_argument('-t', '--template', type=open)
+        parser.add_argument('-f', '--lyricsfile', type=open)
+        parser.add_argument('-d', '--lyricsfolder')
+        self.args = parser.parse_args()
+
+        if self.args.template is None:
+            print("Template file is not defined!")
+            return
+
+        if self.args.lyricsfile is not None:
+            self.convert_file = True
+        elif self.args.lyricsfolder is not None:
+            self.convert_file = False
+        else:
+            print("Lyrics file or folder is not defined!")
+            return
+
         self.tree = None
         self.root = None
         self.lyric_instance = None
@@ -93,55 +113,60 @@ class Pro6Generator:
                                  "Chorus 1": "1 0 0 1", "Chorus 2": "0.93 0.5 0.93 1", "Chorus 3": "0.67 0.67 0.67 1",
                                  "Bridge 1": "1 1 1 1", "Bridge 2": "0.6 0.4 0.2 1", "Bridge 3": "1 0.5 0 1",
                                  "Ending": "0 1 1 1"}
+        self.init = True
 
     def import_template(self, template):
         self.tree = ET.parse(template)
         self.root = self.tree.getroot()
 
     def generate_pro6(self):
+        if self.convert_file:
+            self.process_convert(self.args.lyricsfile.name)
+            self.tree.write('Lyrics_Pro6/' + self.args.lyricsfile.name.rstrip(".txt") + '.pro6', encoding="utf-8", xml_declaration=True)
+        else:
+            for lyrics_file in Path(self.args.lyricsfolder).iterdir():
+                if lyrics_file.is_file():
+                    self.process_convert(lyrics_file)
+                    self.tree.write('Lyrics_Pro6/' + lyrics_file.stem + '.pro6', encoding="utf-8", xml_declaration=True)
+
+    def process_convert(self, lyrics_file):
         slide_array = None
         group_array = None
 
-        for path in Path("Lyrics_text/").iterdir():
-            pro6_generator.import_template('template.pro6')
-            if path.is_file():
-                self.lyric_instance = Lyric(path)
+        pro6_generator.import_template(self.args.template.name)
 
-                for slide in self.tree.findall("./array/RVSlideGrouping/array[@rvXMLIvarName='slides']"):
-                    slide_array = slide
-                if slide_array is None:
-                    print("Pro6 template is incorrect!")
-                    return
+        self.lyric_instance = Lyric(lyrics_file)
 
-                for RVDisplaySlide in self.tree.findall("./array/RVSlideGrouping/array/RVDisplaySlide"):
-                    self.slide_copy = copy.deepcopy(RVDisplaySlide)
-                    slide_array.remove(RVDisplaySlide)
+        for slide in self.tree.findall("./array/RVSlideGrouping/array[@rvXMLIvarName='slides']"):
+            slide_array = slide
+        if slide_array is None:
+            print("Pro6 template is incorrect!")
+            return
 
-                for array in self.tree.findall("./array[@rvXMLIvarName='groups']"):
-                    group_array = array
-                if group_array is None:
-                    print("Pro6 template is incorrect!")
-                    return
+        for RVDisplaySlide in self.tree.findall("./array/RVSlideGrouping/array/RVDisplaySlide"):
+            self.slide_copy = copy.deepcopy(RVDisplaySlide)
+            slide_array.remove(RVDisplaySlide)
 
-                # find the target element RVDisplaySlide
-                for RVSlideGrouping in self.tree.findall("./array/RVSlideGrouping"):
-                    self.group_copy = copy.deepcopy(RVSlideGrouping)
-                    group_array.remove(RVSlideGrouping)
+        for array in self.tree.findall("./array[@rvXMLIvarName='groups']"):
+            group_array = array
+        if group_array is None:
+            print("Pro6 template is incorrect!")
+            return
 
-                # group = self.create_group(group_array, "Verse 1")
-                # self.create_slide(group, "test")
+        # find the target element RVDisplaySlide
+        for RVSlideGrouping in self.tree.findall("./array/RVSlideGrouping"):
+            self.group_copy = copy.deepcopy(RVSlideGrouping)
+            group_array.remove(RVSlideGrouping)
 
-                for label, section in self.lyric_instance.lyric.items():
-                    if not section:
-                        continue
-                    else:
-                        group = self.create_group(group_array, label)
-                        for text in section:
-                            # lower the request frequency of Baidu Translate
-                            time.sleep(0.5)
-                            self.create_slide(group, text)
-
-                self.tree.write('Lyrics_Pro6/' + path.stem + '.pro6', encoding="utf-8", xml_declaration=True)
+        for label, section in self.lyric_instance.lyric.items():
+            if not section:
+                continue
+            else:
+                group = self.create_group(group_array, label)
+                for text in section:
+                    # lower the request frequency of Baidu Translate
+                    time.sleep(0.5)
+                    self.create_slide(group, text)
 
     def create_group(self, parent, label):
         """
