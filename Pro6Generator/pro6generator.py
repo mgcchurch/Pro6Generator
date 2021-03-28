@@ -48,8 +48,8 @@ def translate(chinese_text):
     :param chinese_text:
     :return:
     """
-    appid = '20210308000719567'  # 填写你的appid
-    secretKey = 'bf2mZcXEqokrmbXdYfbz'  # 填写你的密钥
+    appid = 'xxxx'  # 填写你的appid
+    secretKey = 'xxxx'  # 填写你的密钥
 
     apiURL = 'http://api.fanyi.baidu.com/api/trans/vip/translate'  # 通用翻译API HTTP地址
     salt = str(random.randint(32768, 65536))
